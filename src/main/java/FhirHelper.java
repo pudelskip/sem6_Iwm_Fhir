@@ -4,10 +4,12 @@ import ca.uhn.fhir.parser.IParser;
 import ca.uhn.fhir.rest.client.api.IGenericClient;
 import ca.uhn.fhir.rest.client.api.ServerValidationModeEnum;
 
+import ca.uhn.fhir.rest.gclient.TokenClientParam;
 import org.hl7.fhir.dstu3.model.*;
 import org.hl7.fhir.instance.model.api.IBaseBundle;
 
 import java.util.ArrayList;
+import java.util.List;
 
 public class FhirHelper {
 
@@ -32,6 +34,24 @@ public class FhirHelper {
 //                .execute();
     }
 
+    public void test(){
+        Bundle b =client
+        .search()
+        .forResource(Patient.class)
+        .where(new TokenClientParam("_id").exactly().code("IPS-examples-Patient-01"))
+        .returnBundle(Bundle.class).execute();
+
+        for (Bundle.BundleEntryComponent entry : b.getEntry()) {
+            if (entry.getResource() instanceof Patient) {
+                Patient patient = (Patient) entry.getResource();
+                patient.getName().get(0).getFamily();
+                List<HumanName> h =  patient.getName();
+
+            }
+        }
+    }
+
+
     public Bundle search(int count){
         ArrayList<String> patients = new ArrayList<>();
 
@@ -39,7 +59,9 @@ public class FhirHelper {
                 .search()
                 .forResource(Patient.class)
                 .count(count)
+                .where(new TokenClientParam("_sort").exactly().code("_id"))
                 .returnBundle(Bundle.class)
+
                 .execute();
 
         return results;
@@ -66,8 +88,10 @@ public class FhirHelper {
         for (Bundle.BundleEntryComponent entry : b.getEntry()) {
             if (entry.getResource() instanceof Patient) {
                 Patient patient = (Patient) entry.getResource();
-                patients.add(patient.getId().toString());
-                System.out.println(patient.getId());
+                String familyName="Uknown";
+                if(patient.getName().size()>0)
+                    familyName = patient.getName().get(0).getFamily();
+                patients.add(patient.getIdElement().getIdPart()+": "+familyName);
             }
         }
         return patients;
@@ -101,7 +125,7 @@ public class FhirHelper {
                     Patient patient = (Patient) resource;
                     System.out.println(resource.getResourceType() + "/"
                             + resource.getIdElement().getIdPart() + " "
-                            +patient.addName().getFamily()
+
 
                     );
                 }

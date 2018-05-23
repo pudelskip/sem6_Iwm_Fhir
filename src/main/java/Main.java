@@ -7,7 +7,7 @@ public class Main {
     public static void main(String[] args) {
 
         FhirHelper f = new FhirHelper();
-        //f.getPatientEverything("IPS-examples-Patient-01");
+        f.test();
         JFrame frame = new JFrame("Fhir");
         frame.setPreferredSize(new Dimension(800,600));
         frame.setContentPane(new MainWindow().getPanel1());

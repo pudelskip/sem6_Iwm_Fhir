@@ -24,12 +24,7 @@ public class MainWindow {
 
         f = new FhirHelper();
 
-        searchButton.setText("blabla");
         patientList = new DefaultListModel<>();
-        patientList.addElement("Item1");
-        patientList.addElement("Item2");
-        patientList.addElement("Item3");
-        patientList.addElement("Item4");
         list1.setSelectionMode(ListSelectionModel.SINGLE_INTERVAL_SELECTION);
         list1.setLayoutOrientation(JList.VERTICAL);
         list1.setVisibleRowCount(-1);
@@ -42,7 +37,7 @@ public class MainWindow {
         //list1.add(list);
 
 
-//        list1.setSelectionBackground(Color.CYAN);
+        list1.setSelectionBackground(Color.CYAN);
 //
 //
 //        list1.setSize(200,200);
@@ -51,7 +46,7 @@ public class MainWindow {
         searchButton.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                currentBundle = f.search(15);
+                currentBundle = f.search(20);
                 ArrayList<String> patients = f.getPatientListFromBudle(currentBundle);
                 for (String p: patients){
                     patientList.addElement(p);
