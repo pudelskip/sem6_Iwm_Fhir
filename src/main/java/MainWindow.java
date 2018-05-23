@@ -1,10 +1,9 @@
 import org.hl7.fhir.dstu3.model.Bundle;
+import org.hl7.fhir.dstu3.model.Patient;
 
 import javax.swing.*;
 import java.awt.*;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
-import java.awt.event.InputMethodListener;
+import java.awt.event.*;
 import java.util.ArrayList;
 
 public class MainWindow {
@@ -31,23 +30,33 @@ public class MainWindow {
        // JScrollPane listScroller = new JScrollPane(list1);
         //listScroller.setPreferredSize(new Dimension(250, 80));
         list1.setModel(patientList);
-
-       JList<String> list = new JList<>(patientList);
-        list.setBounds(0,40, 75,75);
+        list1.addMouseListener(new MouseAdapter() {
+            public void mouseClicked(MouseEvent evt) {
+                JList list = (JList)evt.getSource();
+                if (evt.getClickCount() == 2) {
+                    int index = list.locationToIndex(evt.getPoint());
+                    Patient p = (Patient) currentBundle.getEntry().get(index).getResource();
+                    f.getPatientEverything(p.getIdElement().getIdPart());
+                    System.out.print(index);
+                }
+            }
+        });
         //list1.add(list);
 
 
-        list1.setSelectionBackground(Color.CYAN);
-//
-//
 //        list1.setSize(200,200);
 //
 //        list1.setVisible(true);
         searchButton.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
+                JFrame newFrame=new JFrame();
+
+                newFrame.setVisible(true);
+                newFrame.setSize(new Dimension(500,400));
+
                 currentBundle = f.search(20);
-                ArrayList<String> patients = f.getPatientListFromBudle(currentBundle);
+                ArrayList<String> patients = f.getPatientListFromBundle(currentBundle);
                 for (String p: patients){
                     patientList.addElement(p);
                 }
@@ -62,7 +71,7 @@ public class MainWindow {
                     Bundle temp = f.getNextBundle(currentBundle);
                     currentBundle=temp;
                     patientList.clear();
-                    ArrayList<String> patients = f.getPatientListFromBudle(currentBundle);
+                    ArrayList<String> patients = f.getPatientListFromBundle(currentBundle);
                     for (String p: patients){
                         patientList.addElement(p);
                     }
@@ -78,7 +87,7 @@ public class MainWindow {
                     Bundle temp = f.getPreviousBundle(currentBundle);
                     currentBundle=temp;
                     patientList.clear();
-                    ArrayList<String> patients = f.getPatientListFromBudle(currentBundle);
+                    ArrayList<String> patients = f.getPatientListFromBundle(currentBundle);
                     for (String p: patients){
                         patientList.addElement(p);
                     }

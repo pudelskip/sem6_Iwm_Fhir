@@ -6,8 +6,10 @@ public class Main {
 
     public static void main(String[] args) {
 
+        // obsercvatoins test  "3776058"
         FhirHelper f = new FhirHelper();
-        f.test();
+       // f.test();
+        f.getPatientEverything("3776058");
         JFrame frame = new JFrame("Fhir");
         frame.setPreferredSize(new Dimension(800,600));
         frame.setContentPane(new MainWindow().getPanel1());

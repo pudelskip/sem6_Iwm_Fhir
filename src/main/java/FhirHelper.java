@@ -5,11 +5,12 @@ import ca.uhn.fhir.rest.client.api.IGenericClient;
 import ca.uhn.fhir.rest.client.api.ServerValidationModeEnum;
 
 import ca.uhn.fhir.rest.gclient.TokenClientParam;
+import javafx.util.Pair;
 import org.hl7.fhir.dstu3.model.*;
+import org.hl7.fhir.exceptions.FHIRException;
 import org.hl7.fhir.instance.model.api.IBaseBundle;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 
 public class FhirHelper {
 
@@ -17,7 +18,7 @@ public class FhirHelper {
     FhirContext context= null;
     IGenericClient client= null;
 
-    String[] examplePatients = {"IPS-examples-Patient-01","1321198","2035121"};
+    String[] examplePatients = {"152","IPS-examples-Patient-01","1321198","2035121"};
     public FhirHelper() {
         String serverBase = "http://hapi.fhir.org/baseDstu3";
 
@@ -83,7 +84,7 @@ public class FhirHelper {
 
     }
 
-    public ArrayList<String> getPatientListFromBudle(Bundle b){
+    public ArrayList<String> getPatientListFromBundle(Bundle b){
         ArrayList<String> patients = new ArrayList<>();
         for (Bundle.BundleEntryComponent entry : b.getEntry()) {
             if (entry.getResource() instanceof Patient) {
@@ -101,8 +102,8 @@ public class FhirHelper {
 
     public void getPatientEverything(String id){
 
-            // Invoke $everything on our Patient
-            // See http://hapifhir.io/doc_rest_client.html#Extended_Operations
+            HashMap<Date,String> events = new HashMap<>();
+            ArrayList<Pair<Date,String>> ev = new ArrayList<>();
             Parameters outParams = client
                     .operation()
                     .onInstance(new IdType("Patient", id))
@@ -110,11 +111,9 @@ public class FhirHelper {
                     .withNoParameters(Parameters.class).useHttpGet() // No input parameters
                     .execute();
 
-            // FHIR normally returns a 'Parameters' resource to an operation, but
-            // in case of a single resource response, it just returns the resource
-            // itself. This is why it seems that we have to fish a Bundle out of the
-            // resulting Params result - HAPI needs to update for the FHIR shortcut
             Bundle result = (Bundle) outParams.getParameterFirstRep().getResource();
+
+        while(result.getLink(IBaseBundle.LINK_NEXT) != null) {
 
             System.out.println("Received " + result.getTotal()
                     + " results. The resources are:");
@@ -125,38 +124,99 @@ public class FhirHelper {
                     Patient patient = (Patient) resource;
                     System.out.println(resource.getResourceType() + "/"
                             + resource.getIdElement().getIdPart() + " "
-
-
                     );
                 }
 
                 if (resource instanceof MedicationStatement) {
                     MedicationStatement mStatment = (MedicationStatement) resource;
+
                     try {
+                        //CodeableConcept =-mStatment.getContained()
+                        String medName = mStatment.getMedicationCodeableConcept().getText();
                         Period period = mStatment.getEffectivePeriod();
-                        if(period != null)
+
+                        if (medName == null)
+                            medName = "nameNotFound";
+
+                        if (period != null) {
+                            Date start = period.getStart();
+                            Date end = period.getEnd();
+                            if (start != null) {
+                                events.put(start, "Started taking medicine " + medName);
+                                ev.add(new Pair<>(start, "Started taking medicine " + medName));
+                            }
+                            if (end != null) {
+                                events.put(end, "Stopped taking medicine " + medName);
+                                ev.add(new Pair<>(end, "Stopped taking medicine " + medName));
+                            }
                             System.out.println(resource.getResourceType() + "/"
                                     + resource.getIdElement().getIdPart() + " "
                                     + period.getStart()
                             );
+                        }
+
+
                     } catch (Exception e) {
-                        //e.printStackTrace();
+                       // System.out.print(e.toString());
+                        e.printStackTrace();
                     }
 
                 }
 
                 if (resource instanceof Observation) {
                     Observation observation = (Observation) resource;
+                    Date date = null;
+                    String dateString = "";
+                    String observationText = "";
+                    String value = "";
+                    try {
+                        DateTimeType effectiveDate = observation.getEffectiveDateTimeType();
+                        date = effectiveDate.getValue();
+                        dateString = effectiveDate.toHumanDisplay();
+                        observationText = observation.getCode().getText();
+                        value=" (" +observation.getValueQuantity().getValue().toString()+" "+observation.getValueQuantity().getUnit()+")";
+                    } catch (Exception e) {
+                        //e.printStackTrace();
+                    }
+                    if (date != null) {
+                        events.put(date, "Observation: " + observationText + " " + date);
+                        ev.add(new Pair<>(date, "Observation: " + observationText+value + " " + dateString));
+                    }
+                    System.out.println(resource.getResourceType() + "/"
+                            + resource.getIdElement().getIdPart() + " "
+                            + dateString
+
+                    );
                 }
 
                 if (resource instanceof Medication) {
                     Medication medication = (Medication) resource;
+                    System.out.println(resource.getResourceType() + "/"
+                            + resource.getIdElement().getIdPart() + " "
+
+                    );
                 }
 
-
-
             });
+            Bundle next = client.loadPage().next(result).execute();
+            result=next;
+        }
+        ArrayList<Pair<Date,String>> sorted= sortEvents(ev);
+
+        
 
 
+
+    }
+
+
+    private ArrayList<Pair<Date,String>> sortEvents(ArrayList<Pair<Date,String>> events){
+       events.sort(new Comparator<Pair<Date, String>>() {
+            @Override
+            public int compare(Pair<Date, String> o1, Pair<Date, String> o2) {
+                return o1.getKey().compareTo(o2.getKey());
+            }
+        });
+        return events;
     }
 }
