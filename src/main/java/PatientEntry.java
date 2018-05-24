@@ -7,10 +7,10 @@ import java.util.HashMap;
 public class PatientEntry {
 
     private ArrayList<Pair<Date,String>> events;
-    private HashMap<String, ArrayList<Pair<Date,String>>> measures;
+    private HashMap<String, ArrayList<Pair<Date,Integer>>> measures;
 
 
-    public PatientEntry(ArrayList<Pair<Date,String>> ev,HashMap<String, ArrayList<Pair<Date,String>>> m) {
+    public PatientEntry(ArrayList<Pair<Date,String>> ev,HashMap<String, ArrayList<Pair<Date,Integer>>> m) {
 
         events = new ArrayList<>(ev);
         measures = new HashMap<>(m);
@@ -21,7 +21,7 @@ public class PatientEntry {
         return events;
     }
 
-    public HashMap<String, ArrayList<Pair<Date, String>>> getMeasures() {
+    public HashMap<String, ArrayList<Pair<Date, Integer>>> getMeasures() {
         return measures;
     }
 }

@@ -119,7 +119,7 @@ public class FhirHelper {
 
     public  PatientEntry getPatientEverything(String id){
 
-            HashMap<String, ArrayList<Pair<Date,String>>> measures = new HashMap<>();
+            HashMap<String, ArrayList<Pair<Date,Integer>>> measures = new HashMap<>();
             ArrayList<Pair<Date,String>> ev = new ArrayList<>();
             Parameters outParams = client
                     .operation()
@@ -205,7 +205,7 @@ public class FhirHelper {
                         if(measures.containsKey(observationText)) {
                             measures.get(observationText).add(new Pair(date,valueInt));
                         }else{
-                            measures.put(observationText,new ArrayList<Pair<Date, String>>());
+                            measures.put(observationText,new ArrayList<Pair<Date, Integer>>());
                             measures.get(observationText).add(new Pair(date,valueInt));
                         }
                         ev.add(new Pair<>(date, "Observation: " + observationText+value ));
