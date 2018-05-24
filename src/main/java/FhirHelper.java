@@ -4,6 +4,8 @@ import ca.uhn.fhir.parser.IParser;
 import ca.uhn.fhir.rest.client.api.IGenericClient;
 import ca.uhn.fhir.rest.client.api.ServerValidationModeEnum;
 
+import ca.uhn.fhir.rest.gclient.IQuery;
+import ca.uhn.fhir.rest.gclient.StringClientParam;
 import ca.uhn.fhir.rest.gclient.TokenClientParam;
 import javafx.util.Pair;
 import org.hl7.fhir.dstu3.model.*;
@@ -24,6 +26,8 @@ public class FhirHelper {
 
         context = FhirContext.forDstu3();
         context.getRestfulClientFactory().setServerValidationMode(ServerValidationModeEnum.NEVER);
+        context.getRestfulClientFactory().setConnectionRequestTimeout(20*1000);
+        context.getRestfulClientFactory().setSocketTimeout(20*1000);
         client = context.newRestfulGenericClient(serverBase);
         IParser parser = context.newXmlParser();
 
@@ -36,34 +40,47 @@ public class FhirHelper {
     }
 
     public void test(){
-        Bundle b =client
-        .search()
-        .forResource(Patient.class)
-        .where(new TokenClientParam("_id").exactly().code("IPS-examples-Patient-01"))
-        .returnBundle(Bundle.class).execute();
 
-        for (Bundle.BundleEntryComponent entry : b.getEntry()) {
-            if (entry.getResource() instanceof Patient) {
-                Patient patient = (Patient) entry.getResource();
-                patient.getName().get(0).getFamily();
-                List<HumanName> h =  patient.getName();
-
-            }
-        }
+            this.getPatientEverything("patient-1");
+//        Bundle b =client
+//        .search()
+//        .forResource(Patient.class)
+//        .where(new TokenClientParam("_id").exactly().code("IPS-examples-Patient-01"))
+//        .returnBundle(Bundle.class).execute();
+//
+//        for (Bundle.BundleEntryComponent entry : b.getEntry()) {
+//            if (entry.getResource() instanceof Patient) {
+//                Patient patient = (Patient) entry.getResource();
+//                patient.getName().get(0).getFamily();
+//                List<HumanName> h =  patient.getName();
+//
+//            }
+//        }
     }
 
 
-    public Bundle search(int count){
+    public Bundle search(int count,String familyName,String id){
         ArrayList<String> patients = new ArrayList<>();
-
-        Bundle results = client
+        Bundle results=null;
+        IQuery<IBaseBundle> query = client
                 .search()
                 .forResource(Patient.class)
-                .count(count)
-                .where(new TokenClientParam("_sort").exactly().code("_id"))
-                .returnBundle(Bundle.class)
+                .count(count);
+                //.where(new TokenClientParam("_sort").exactly().code("_id"));
 
-                .execute();
+
+        if(familyName!=null && familyName !="") {
+            query = query.where(new StringClientParam("family").matches().value(familyName));
+
+        }
+
+        if(id!=null && id !=""){
+            query = query.where(new TokenClientParam("_id").exactly().code(id));
+        }
+
+
+            results = query.returnBundle(Bundle.class).execute();
+
 
         return results;
     }
@@ -100,7 +117,8 @@ public class FhirHelper {
     }
 
 
-    public void getPatientEverything(String id){
+    public  ArrayList<Pair<Date,String>> getPatientEverything(String id){
+
 
             HashMap<Date,String> events = new HashMap<>();
             ArrayList<Pair<Date,String>> ev = new ArrayList<>();
@@ -112,19 +130,22 @@ public class FhirHelper {
                     .execute();
 
             Bundle result = (Bundle) outParams.getParameterFirstRep().getResource();
-
+        int pages=0;
         while(result.getLink(IBaseBundle.LINK_NEXT) != null) {
+            pages+=1;
+            if(pages>10) break;
 
-            System.out.println("Received " + result.getTotal()
-                    + " results. The resources are:");
+
+//            System.out.println("Received " + result.getTotal()
+//                    + " results. The resources are:");
             result.getEntry().forEach((entry) -> {
                 Resource resource = entry.getResource();
 
                 if (resource instanceof Patient) {
                     Patient patient = (Patient) resource;
-                    System.out.println(resource.getResourceType() + "/"
-                            + resource.getIdElement().getIdPart() + " "
-                    );
+//                    System.out.println(resource.getResourceType() + "/"
+//                            + resource.getIdElement().getIdPart() + " "
+//                    );
                 }
 
                 if (resource instanceof MedicationStatement) {
@@ -142,17 +163,17 @@ public class FhirHelper {
                             Date start = period.getStart();
                             Date end = period.getEnd();
                             if (start != null) {
-                                events.put(start, "Started taking medicine " + medName);
-                                ev.add(new Pair<>(start, "Started taking medicine " + medName));
+                               // events.put(start, "Started taking medicine " + medName);
+                                ev.add(new Pair<>(start, "Started taking medication " + medName));
                             }
                             if (end != null) {
-                                events.put(end, "Stopped taking medicine " + medName);
-                                ev.add(new Pair<>(end, "Stopped taking medicine " + medName));
+                                //events.put(end, "Stopped taking medicine " + medName);
+                                ev.add(new Pair<>(end, "Stopped taking medication " + medName));
                             }
-                            System.out.println(resource.getResourceType() + "/"
-                                    + resource.getIdElement().getIdPart() + " "
-                                    + period.getStart()
-                            );
+//                            System.out.println(resource.getResourceType() + "/"
+//                                    + resource.getIdElement().getIdPart() + " "
+//                                    + period.getStart()
+//                            );
                         }
 
 
@@ -179,22 +200,22 @@ public class FhirHelper {
                         //e.printStackTrace();
                     }
                     if (date != null) {
-                        events.put(date, "Observation: " + observationText + " " + date);
-                        ev.add(new Pair<>(date, "Observation: " + observationText+value + " " + dateString));
+                      //  events.put(date, "Observation: " + observationText + " " + date);
+                        ev.add(new Pair<>(date, "Observation: " + observationText+value ));
                     }
-                    System.out.println(resource.getResourceType() + "/"
-                            + resource.getIdElement().getIdPart() + " "
-                            + dateString
-
-                    );
+//                    System.out.println(resource.getResourceType() + "/"
+//                            + resource.getIdElement().getIdPart() + " "
+//                            + dateString
+//
+//                    );
                 }
 
                 if (resource instanceof Medication) {
                     Medication medication = (Medication) resource;
-                    System.out.println(resource.getResourceType() + "/"
-                            + resource.getIdElement().getIdPart() + " "
-
-                    );
+//                    System.out.println(resource.getResourceType() + "/"
+//                            + resource.getIdElement().getIdPart() + " "
+//
+//                    );
                 }
 
             });
@@ -203,9 +224,8 @@ public class FhirHelper {
         }
         ArrayList<Pair<Date,String>> sorted= sortEvents(ev);
 
-        
 
-
+        return sorted;
 
     }
 
