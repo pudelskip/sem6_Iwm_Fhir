@@ -117,10 +117,9 @@ public class FhirHelper {
     }
 
 
-    public  ArrayList<Pair<Date,String>> getPatientEverything(String id){
+    public  PatientEntry getPatientEverything(String id){
 
-
-            HashMap<Date,String> events = new HashMap<>();
+            HashMap<String, ArrayList<Pair<Date,String>>> measures = new HashMap<>();
             ArrayList<Pair<Date,String>> ev = new ArrayList<>();
             Parameters outParams = client
                     .operation()
@@ -190,17 +189,25 @@ public class FhirHelper {
                     String dateString = "";
                     String observationText = "";
                     String value = "";
+                    int valueInt = 0;
                     try {
                         DateTimeType effectiveDate = observation.getEffectiveDateTimeType();
                         date = effectiveDate.getValue();
                         dateString = effectiveDate.toHumanDisplay();
                         observationText = observation.getCode().getText();
                         value=" (" +observation.getValueQuantity().getValue().toString()+" "+observation.getValueQuantity().getUnit()+")";
+                        valueInt = observation.getValueQuantity().getValue().intValue();
                     } catch (Exception e) {
                         //e.printStackTrace();
                     }
                     if (date != null) {
                       //  events.put(date, "Observation: " + observationText + " " + date);
+                        if(measures.containsKey(observationText)) {
+                            measures.get(observationText).add(new Pair(date,valueInt));
+                        }else{
+                            measures.put(observationText,new ArrayList<Pair<Date, String>>());
+                            measures.get(observationText).add(new Pair(date,valueInt));
+                        }
                         ev.add(new Pair<>(date, "Observation: " + observationText+value ));
                     }
 //                    System.out.println(resource.getResourceType() + "/"
@@ -223,9 +230,10 @@ public class FhirHelper {
             result=next;
         }
         ArrayList<Pair<Date,String>> sorted= sortEvents(ev);
+        PatientEntry patientEntry = new PatientEntry(sorted,measures);
 
 
-        return sorted;
+        return patientEntry;
 
     }
 

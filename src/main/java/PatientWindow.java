@@ -4,20 +4,21 @@ import org.hl7.fhir.dstu3.model.Patient;
 import javax.swing.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 
 public class PatientWindow {
     private JPanel panel1;
     private JTextField textFrom;
-    private JTextField textField2;
     private JButton filterButton;
     private JList list1;
     private JLabel id;
     private JLabel name;
     private JLabel gender;
     private JLabel birth;
-    private JLabel textTo;
+    private JTextField textTo;
     private  FhirHelper f;
     private DefaultListModel<String> patientEventsList;
 
@@ -25,7 +26,8 @@ public class PatientWindow {
 
 
         f = new FhirHelper();
-        ArrayList<Pair<Date,String>> patientEvents = f.getPatientEverything(myPatient.getIdElement().getIdPart());
+        PatientEntry patientEntry = f.getPatientEverything(myPatient.getIdElement().getIdPart());
+        ArrayList<Pair<Date,String>> patientEvents = patientEntry.getEvents();
 
         String name1 ="<unknown>";
         String given1=" <unknown>";
@@ -65,6 +67,37 @@ public class PatientWindow {
         filterButton.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
+                patientEventsList.clear();
+
+                Date from = patientEvents.get(0).getKey();
+                Date to = patientEvents.get(patientEvents.size()-1).getKey();
+
+                if(!textFrom.getText().equals("")) {
+                    try {
+                        from=new SimpleDateFormat("dd.MM.yyyy").parse(textFrom.getText());
+                    } catch (ParseException e1) {
+                        e1.printStackTrace();
+                    }
+                }
+
+                if(!textTo.getText().equals("")) {
+                    try {
+                        to=new SimpleDateFormat("dd.MM.yyyy").parse(textTo.getText());
+                    } catch (ParseException e1) {
+                        e1.printStackTrace();
+                    }
+                }
+
+
+                for (Pair<Date,String> dateStringPair: patientEvents){
+
+                    if(dateStringPair.getKey().compareTo(from)>=0 && dateStringPair.getKey().compareTo(to)<=0) {
+                        String addToList = "";
+                        addToList += dateStringPair.getKey().toString() + " - " + dateStringPair.getValue();
+                        patientEventsList.addElement(addToList);
+                    }
+                }
+
 
             }
         });

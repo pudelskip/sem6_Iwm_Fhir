@@ -15,4 +15,6 @@ dependencies {
     compile 'ca.uhn.hapi.fhir:hapi-fhir-base:3.3.0'
     compile 'ca.uhn.hapi.fhir:hapi-fhir-client:3.3.0'
     compile 'ca.uhn.hapi.fhir:hapi-fhir-structures-dstu3:3.3.0'
+    compile group: 'jfree', name: 'jfreechart', version: '1.0.12'
+
 }
