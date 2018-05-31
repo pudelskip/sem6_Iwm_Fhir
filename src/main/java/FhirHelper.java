@@ -1,6 +1,7 @@
 import ca.uhn.fhir.context.FhirContext;
 
 import ca.uhn.fhir.parser.IParser;
+import ca.uhn.fhir.rest.client.api.IBasicClient;
 import ca.uhn.fhir.rest.client.api.IGenericClient;
 import ca.uhn.fhir.rest.client.api.ServerValidationModeEnum;
 
@@ -8,27 +9,42 @@ import ca.uhn.fhir.rest.gclient.IQuery;
 import ca.uhn.fhir.rest.gclient.StringClientParam;
 import ca.uhn.fhir.rest.gclient.TokenClientParam;
 import javafx.util.Pair;
+import org.apache.commons.io.IOUtils;
+import org.apache.http.HttpResponse;
+import org.apache.http.client.methods.HttpGet;
+import org.apache.http.impl.client.CloseableHttpClient;
+import org.apache.http.impl.client.HttpClientBuilder;
+import org.apache.http.impl.conn.PoolingHttpClientConnectionManager;
 import org.hl7.fhir.dstu3.model.*;
 import org.hl7.fhir.exceptions.FHIRException;
 import org.hl7.fhir.instance.model.api.IBaseBundle;
 
+import java.io.IOException;
 import java.util.*;
+import java.util.concurrent.TimeUnit;
 
 public class FhirHelper {
 
 
     FhirContext context= null;
     IGenericClient client= null;
+    String serverBase;
 
     String[] examplePatients = {"152","IPS-examples-Patient-01","1321198","2035121"};
     public FhirHelper() {
-        String serverBase = "http://hapi.fhir.org/baseDstu3";
+
+        if(Constants.FHIR_BASE=="")
+            throw new RuntimeException("No fhir base found");
+        else
+            serverBase= Constants.FHIR_BASE;
 
         context = FhirContext.forDstu3();
         context.getRestfulClientFactory().setServerValidationMode(ServerValidationModeEnum.NEVER);
         context.getRestfulClientFactory().setConnectionRequestTimeout(20*1000);
         context.getRestfulClientFactory().setSocketTimeout(20*1000);
         client = context.newRestfulGenericClient(serverBase);
+
+
         IParser parser = context.newXmlParser();
 
 //        Bundle results = client
@@ -41,13 +57,13 @@ public class FhirHelper {
 
     public void test(){
 
-            this.getPatientEverything("patient-1");
-//        Bundle b =client
-//        .search()
-//        .forResource(Patient.class)
-//        .where(new TokenClientParam("_id").exactly().code("IPS-examples-Patient-01"))
-//        .returnBundle(Bundle.class).execute();
-//
+        //    this.getPatientEverything("patient-1");
+        Bundle b =client
+        .search()
+        .forResource(Patient.class)
+        .where(new TokenClientParam("_id").exactly().code("06eb35fc-09e6-48b4-a311-47633f6c4769"))
+        .returnBundle(Bundle.class).execute();
+
 //        for (Bundle.BundleEntryComponent entry : b.getEntry()) {
 //            if (entry.getResource() instanceof Patient) {
 //                Patient patient = (Patient) entry.getResource();
@@ -116,6 +132,34 @@ public class FhirHelper {
 
     }
 
+    public void upadtePatient(Patient p){
+        client.update().resource(p).execute();
+    }
+
+    public Bundle getPatientHistory(String id){
+        Bundle bundle =null;
+        PoolingHttpClientConnectionManager connectionManager = new PoolingHttpClientConnectionManager(5000, TimeUnit.MILLISECONDS);
+        HttpClientBuilder builder = HttpClientBuilder.create();
+        builder.setConnectionManager(connectionManager);
+        CloseableHttpClient ourClient = builder.build();
+        HttpGet httpGet = new HttpGet(Constants.FHIR_BASE + "/Patient/"+id+"/_history");
+        HttpResponse status = null;
+        try {
+            status = ourClient.execute(httpGet);
+            String responseContent = IOUtils.toString(status.getEntity().getContent());
+            IOUtils.closeQuietly(status.getEntity().getContent());
+            if(status!= null && status.getStatusLine().getStatusCode()==200)
+
+                bundle =context.newJsonParser().parseResource(Bundle.class, responseContent);
+        } catch (IOException e1) {
+            e1.printStackTrace();
+        }
+
+
+        return bundle;
+
+    }
+
 
     public  PatientEntry getPatientEverything(String id){
 
@@ -147,32 +191,23 @@ public class FhirHelper {
 //                    );
                 }
 
-                if (resource instanceof MedicationStatement) {
-                    MedicationStatement mStatment = (MedicationStatement) resource;
+                if (resource instanceof MedicationRequest) {
+                    MedicationRequest mStatment = (MedicationRequest) resource;
 
                     try {
                         //CodeableConcept =-mStatment.getContained()
                         String medName = mStatment.getMedicationCodeableConcept().getText();
-                        Period period = mStatment.getEffectivePeriod();
+                        //Period period = mStatment.getEffectivePeriod();
+                        mStatment.getAuthoredOn();
 
                         if (medName == null)
                             medName = "nameNotFound";
 
-                        if (period != null) {
-                            Date start = period.getStart();
-                            Date end = period.getEnd();
-                            if (start != null) {
+                        if (mStatment.getAuthoredOn()!= null) {
+
                                // events.put(start, "Started taking medicine " + medName);
-                                ev.add(new Pair<>(start, "Started taking medication " + medName));
-                            }
-                            if (end != null) {
-                                //events.put(end, "Stopped taking medicine " + medName);
-                                ev.add(new Pair<>(end, "Stopped taking medication " + medName));
-                            }
-//                            System.out.println(resource.getResourceType() + "/"
-//                                    + resource.getIdElement().getIdPart() + " "
-//                                    + period.getStart()
-//                            );
+                                ev.add(new Pair<>(mStatment.getAuthoredOn(), "Started taking medication " + medName));
+
                         }
 
 
@@ -194,22 +229,67 @@ public class FhirHelper {
                         DateTimeType effectiveDate = observation.getEffectiveDateTimeType();
                         date = effectiveDate.getValue();
                         dateString = effectiveDate.toHumanDisplay();
-                        observationText = observation.getCode().getText();
+
+                        if(observationText==null){
+                            int dsa=1;
+                        System.out.println(observation.getCode().getText());}
+                    }  catch (FHIRException e) {
+                        System.out.println("cannot extract date (Some fhir exception that doesnt even work)");
+                    } catch (NullPointerException e) {
+                        System.out.println("cannot extract date (null)");
+                    }
+
+                    try {
                         value=" (" +observation.getValueQuantity().getValue().toString()+" "+observation.getValueQuantity().getUnit()+")";
                         valueInt = observation.getValueQuantity().getValue().intValue();
-                    } catch (Exception e) {
-                        //e.printStackTrace();
-                    }
-                    if (date != null) {
-                      //  events.put(date, "Observation: " + observationText + " " + date);
-                        if(measures.containsKey(observationText)) {
-                            measures.get(observationText).add(new Pair(date,valueInt));
-                        }else{
-                            measures.put(observationText,new ArrayList<Pair<Date, Integer>>());
-                            measures.get(observationText).add(new Pair(date,valueInt));
+                        observationText = observation.getCode().getText();
+                        if (date != null) {
+                            if(measures.containsKey(observationText)) {
+                                measures.get(observationText).add(new Pair(date,valueInt));
+                            }else{
+                                measures.put(observationText,new ArrayList<Pair<Date, Integer>>());
+                                measures.get(observationText).add(new Pair(date,valueInt));
+                            }
+                            ev.add(new Pair<>(date, "Observation: " + observationText+value+" - "+ observation.getId()));
                         }
-                        ev.add(new Pair<>(date, "Observation: " + observationText+value ));
+
+
+
+
+                    } catch (NullPointerException e) {
+                        //value=" (" +observation.getComponent().get(0).getValueQuantity().getValue()+" "+observation.getComponent().get(0).getValueQuantity().getUnit()+")";
+                        System.out.println("No value");
+                        try {
+                            for(int i=0;i<observation.getComponent().size();i++){
+                                System.out.println(observation.getComponent().get(i).getValueQuantity().getValue().toString());
+                                value=" (" +observation.getComponent().get(i).getValueQuantity().getValue().toString()+" "+observation.getComponent().get(0).getValueQuantity().getUnit()+")";
+                                valueInt = observation.getComponent().get(i).getValueQuantity().getValue().intValue();
+                                observationText = observation.getComponent().get(i).getCode().getText();
+                                if (date != null) {
+                                    if(measures.containsKey(observationText)) {
+                                        measures.get(observationText).add(new Pair(date,valueInt));
+                                    }else{
+                                        measures.put(observationText,new ArrayList<Pair<Date, Integer>>());
+                                        measures.get(observationText).add(new Pair(date,valueInt));
+                                    }
+                                    ev.add(new Pair<>(date, "Observation: " + observationText+value+" - "+ observation.getId()));
+                                }
+
+                            }
+
+                        } catch (NullPointerException e1) {
+                            System.out.println("WOW,everything failed now there is nothing more that can be done");
+                        }catch (FHIRException e2) {
+                            System.out.println("No value2 (Some fhir exception that doesnt even work)");
+                        }
+
+
+
+                    } catch (FHIRException e) {
+                        System.out.println("No value (Some fhir exception that doesnt even work)");
                     }
+
+
 //                    System.out.println(resource.getResourceType() + "/"
 //                            + resource.getIdElement().getIdPart() + " "
 //                            + dateString

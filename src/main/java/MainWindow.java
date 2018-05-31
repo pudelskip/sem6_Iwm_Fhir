@@ -14,13 +14,12 @@ public class MainWindow {
     private JButton previousButton;
     private JButton nextButton;
     private JTextField textField2;
+    private JLabel baseName;
     private DefaultListModel<String> patientList;
     private FhirHelper f;
     private Bundle currentBundle;
 
     public MainWindow() {
-
-
 
         f = new FhirHelper();
 
@@ -33,7 +32,7 @@ public class MainWindow {
                     int index = list.locationToIndex(evt.getPoint());
                     Patient p = (Patient) currentBundle.getEntry().get(index).getResource();
                     JFrame frame=new JFrame("Patient Details");
-                    frame.setPreferredSize(new Dimension(800,600));
+                    frame.setPreferredSize(new Dimension(1000,600));
                     frame.setContentPane(new PatientWindow(p).getPanel1());
                     frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
                     frame.pack(); //code wouldnt work if i comment out this line
@@ -47,6 +46,7 @@ public class MainWindow {
         list1.setSelectionMode(ListSelectionModel.SINGLE_INTERVAL_SELECTION);
         list1.setLayoutOrientation(JList.VERTICAL);
         list1.setVisibleRowCount(-1);
+        baseName.setText(Constants.FHIR_BASE);
 
         list1.setModel(patientList);
 
