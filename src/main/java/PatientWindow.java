@@ -55,6 +55,7 @@ public class PatientWindow {
     SimpleDateFormat dateFormat = new SimpleDateFormat("dd.MM.yyyy");
     Bundle versions;
     Patient currentPatient;
+    PatientEntry currentPatientEntry;
 
     private ActionListener myActionListener;
 
@@ -78,6 +79,7 @@ public class PatientWindow {
         currentPatient=myPatient;
         versions = f.getPatientHistory(currentPatient.getIdElement().getIdPart());
         PatientEntry patientEntry = f.getPatientEverything(currentPatient.getIdElement().getIdPart());
+        currentPatientEntry=patientEntry;
         ArrayList<Pair<Date,String>> patientEvents = patientEntry.getEvents();
         HashMap<String, ArrayList<Pair<Date, Integer>>> measures = patientEntry.getMeasures();
         editMode=false;
@@ -127,7 +129,7 @@ public class PatientWindow {
         versionBox.setSelectedItem(currentPatient.getIdElement().getVersionIdPart());
         update.setText(String.valueOf(currentPatient.getMeta().getLastUpdated()));
         id.setText(currentPatient.getIdElement().getIdPart()+" "+currentPatient.getIdElement().getVersionIdPart());
-        name.setText(name1+ " "+given1);
+        name.setText(name1);
         birth.setText(birth1);
         adress.setText(adress1);
         phone.setText(phone1);
@@ -356,11 +358,11 @@ public class PatientWindow {
                     }
 
                     currentPatient = (Patient) versions.getEntry().get(versions.getEntry().size()-1).getResource();
-                    versionBox.setSelectedIndex(versions.getEntry().size()-1);
-                    showVersion();
+
+                    //showVersion();
                     JOptionPane.showMessageDialog(panel1,"Updated");
                     versionBox.addActionListener(myActionListener);
-
+                    versionBox.setSelectedIndex(versions.getEntry().size()-1);
 
                 }
             }
@@ -434,8 +436,8 @@ public class PatientWindow {
 
 
 
-                JFreeChart chart = ChartFactory.createTimeSeriesChart("Test Chart",
-                        "x", "y", dataset,false, false, false);
+                JFreeChart chart = ChartFactory.createTimeSeriesChart(measurement,
+                        "Time", currentPatientEntry.getUnits().get(measurement), dataset,false, false, false);
 
 
                 ChartPanel cp = new ChartPanel(chart);

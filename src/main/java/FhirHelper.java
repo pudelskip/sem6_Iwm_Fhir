@@ -161,9 +161,10 @@ public class FhirHelper {
     }
 
 
-    public  PatientEntry getPatientEverything(String id){
+    public PatientEntry getPatientEverything(String id){
 
             HashMap<String, ArrayList<Pair<Date,Integer>>> measures = new HashMap<>();
+        HashMap<String, String> units = new HashMap<>();
             ArrayList<Pair<Date,String>> ev = new ArrayList<>();
             Parameters outParams = client
                     .operation()
@@ -176,7 +177,7 @@ public class FhirHelper {
         int pages=0;
         while(result.getLink(IBaseBundle.LINK_NEXT) != null) {
             pages+=1;
-            if(pages>10) break;
+           // if(pages>10) break;
 
 
 //            System.out.println("Received " + result.getTotal()
@@ -240,17 +241,19 @@ public class FhirHelper {
                     }
 
                     try {
-                        value=" (" +observation.getValueQuantity().getValue().toString()+" "+observation.getValueQuantity().getUnit()+")";
+                        value=" (" +observation.getValueQuantity().getValue().intValue()+" "+observation.getValueQuantity().getUnit()+")";
                         valueInt = observation.getValueQuantity().getValue().intValue();
                         observationText = observation.getCode().getText();
                         if (date != null) {
+                            if(!units.containsKey(observationText))
+                                units.put(observationText,observation.getValueQuantity().getUnit());
                             if(measures.containsKey(observationText)) {
                                 measures.get(observationText).add(new Pair(date,valueInt));
                             }else{
                                 measures.put(observationText,new ArrayList<Pair<Date, Integer>>());
                                 measures.get(observationText).add(new Pair(date,valueInt));
                             }
-                            ev.add(new Pair<>(date, "Observation: " + observationText+value+" - "+ observation.getId()));
+                            ev.add(new Pair<>(date, "Observation: " + observationText+value));
                         }
 
 
@@ -262,17 +265,20 @@ public class FhirHelper {
                         try {
                             for(int i=0;i<observation.getComponent().size();i++){
                                 System.out.println(observation.getComponent().get(i).getValueQuantity().getValue().toString());
-                                value=" (" +observation.getComponent().get(i).getValueQuantity().getValue().toString()+" "+observation.getComponent().get(0).getValueQuantity().getUnit()+")";
+                                value=" (" +observation.getComponent().get(i).getValueQuantity().getValue().intValue()+" "+observation.getComponent().get(0).getValueQuantity().getUnit()+")";
                                 valueInt = observation.getComponent().get(i).getValueQuantity().getValue().intValue();
                                 observationText = observation.getComponent().get(i).getCode().getText();
                                 if (date != null) {
+                                    if(!units.containsKey(observationText))
+                                        units.put(observationText,observation.getComponent().get(0).getValueQuantity().getUnit());
                                     if(measures.containsKey(observationText)) {
                                         measures.get(observationText).add(new Pair(date,valueInt));
                                     }else{
                                         measures.put(observationText,new ArrayList<Pair<Date, Integer>>());
                                         measures.get(observationText).add(new Pair(date,valueInt));
+
                                     }
-                                    ev.add(new Pair<>(date, "Observation: " + observationText+value+" - "+ observation.getId()));
+                                    ev.add(new Pair<>(date, "Observation: " + observationText+value));
                                 }
 
                             }
@@ -310,7 +316,7 @@ public class FhirHelper {
             result=next;
         }
         ArrayList<Pair<Date,String>> sorted= sortEvents(ev);
-        PatientEntry patientEntry = new PatientEntry(sorted,measures);
+        PatientEntry patientEntry = new PatientEntry(sorted,measures,units);
 
 
         return patientEntry;
